@@ -9,27 +9,20 @@ from keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 from keras.optimizers import Adam
 from keras.utils import multi_gpu_model
 from models.keras import ModelFactory
-from utility import get_sample_counts, check_if_training_in_process
+from utility import get_sample_counts
 from weights import get_class_weights
 from mlflow import log_metric, log_param, log_artifacts
-import mlflow
-import mlflow.keras
+# import mlflow
+# import mlflow.keras
 
 
 # from augmenter import augmenter
 import keras
 
-# def experiments():
-#     for batch_size in [8, 6, 4]:
-#         for reduce_lr in [3, 2, 1]:
-#             for learning_rate in [0.01,0.005,0.001,0.0001]:
-#
-#                 for
-
 
 def main():
     # parser config
-    mlflow.start_run()
+    # mlflow.start_run()
     config_file = "./config.ini"
     cp = ConfigParser()
     cp.read(config_file)
@@ -57,14 +50,15 @@ def main():
     validation_steps = cp["TRAIN"].get("validation_steps")
     positive_weights_multiply = cp["TRAIN"].getfloat("positive_weights_multiply")
     dataset_csv_dir = cp["TRAIN"].get("dataset_csv_dir")
-    datasets = {"train": "train.csv", "val": "val.csv", "test": "test.csv"}
+    datasets = {"train": "train_73.csv", "val": "val_13.csv", "test": "test.csv"}
     # if previously trained weights is used, never re-split
 
-    mlflow.log_param("epochs", epochs)
-    mlflow.log_param("batch_size", batch_size)
-    mlflow.log_param("min_lr", min_lr)
-    mlflow.log_param("patience_reduce_lr", patience_reduce_lr)
-    mlflow.log_param("learning_rate", initial_learning_rate)
+    # mlflow.log_param("epochs", epochs)
+    # mlflow.log_param("datasets", datasets)
+    # mlflow.log_param("batch_size", batch_size)
+    # mlflow.log_param("min_lr", min_lr)
+    # mlflow.log_param("patience_reduce_lr", patience_reduce_lr)
+    # mlflow.log_param("learning_rate", initial_learning_rate)
 
     if use_trained_model_weights:
         # resuming mode
@@ -243,9 +237,9 @@ def main():
             workers=generator_workers,
             shuffle=False,
         )
-        mlflow.log_metric("best_mean_auroc", auroc.stats["best_mean_auroc"])
-        mlflow.log_metric("best_auroc_logs", auroc.best_auroc_log_path)
-        mlflow.log_artifact("model_weights", auroc.best_weights_path)
+        # mlflow.log_metric("best_mean_auroc", auroc.stats["best_mean_auroc"])
+        # mlflow.log_metric("best_auroc_logs", auroc.best_auroc_log_path)
+        # mlflow.log_artifact("model_weights", auroc.best_weights_path)
         # dump history
         print("** dump history **")
         with open(os.path.join(output_dir, "history.pkl"), "wb") as f:
@@ -254,7 +248,7 @@ def main():
                 "auroc": auroc.aurocs,
             }, f)
         print("** done! **")
-        mlflow.end_run()
+        # mlflow.end_run()
     finally:
         os.remove(running_flag_file)
 

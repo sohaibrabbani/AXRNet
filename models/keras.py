@@ -86,64 +86,10 @@ class ModelFactory:
             weights=base_weights,
             pooling="avg")
         x = base_model.output
-        # predictions = Dense(len(class_names)+9, activation="sigmoid", name="predictions")(x)
         predictions = Dense(14, activation="sigmoid", name="predictions")(x)
         model = Model(inputs=img_input, outputs=predictions)
 
-        if not for_test:
-            if weights_path == "":
-                weights_path = None
-
-            if weights_path is not None:
-                print(f"load model weights_path: {weights_path}")
-                model.load_weights(weights_path)
-
         print(model.summary())
-        # if for_test:
-        for layer in model.layers[:-7]:
-            layer.trainable = False
-
-        model.layers.pop()
-        model.layers.pop()
-
-        inputs = Input(shape=input_shape, name="attention_map")
-
-        x = keras.layers.Conv2D(32, kernel_size=(3, 3))(inputs)
-        # x = keras.layers.Activation('relu')(x)
-        x = keras.layers.LeakyReLU()(x)
-        x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.MaxPool2D(pool_size=(3, 3))(x)
-
-        x = keras.layers.Conv2D(64, kernel_size=(3, 3))(x)
-        # x = keras.layers.Activation('relu')(x)
-        x = keras.layers.LeakyReLU()(x)
-        x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.MaxPool2D(pool_size=(3, 3))(x)
-
-        x = keras.layers.Conv2D(1024, kernel_size=(3, 3))(x)
-        # x = keras.layers.Activation('relu')(x)
-        x = keras.layers.LeakyReLU()(x)
-        x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.MaxPool2D(pool_size=(3, 3))(x)
-
-        x = keras.layers.Add()([model.layers[-1].output, x])
-        # x = keras.layers.BatchNormalization()(x)
-        # x = keras.layers.Activation('relu')(x)
-        # # x = keras.layers.LeakyReLU()(x)
-        # # x = keras.layers.ZeroPadding2D((1, 1))(x)
-        # x = keras.layers.Conv2D(1024, kernel_size=(3, 3), use_bias=False, kernel_initializer='he_normal')(x)
-        # x = keras.layers.BatchNormalization()(x)
-        # x = keras.layers.Activation('relu')(x)
-
-        x = keras.layers.GlobalAveragePooling2D()(x)
-        x = keras.layers.Dense(1024)(x)
-        # x = keras.layers.Activation('relu')(x)
-        x = keras.layers.LeakyReLU()(x)
-        # x = keras.layers.Dense(1024, activation='sigmoid')(x)  # Num Classes for CIFAR-10
-        outputs = keras.layers.Dense(len(class_names), activation='sigmoid')(x)  # Num Classes for CIFAR-10
-        # outputs = keras.layers.Activation('sigmoid')(x)
-
-        model = keras.models.Model(inputs=[model.input, inputs], outputs=[outputs])
 
         if for_test:
             if weights_path == "":
@@ -153,74 +99,3 @@ class ModelFactory:
                 print(f"load model weights_path: {weights_path}")
                 model.load_weights(weights_path)
         return model
-
-    # def get_model(self, class_names, model_name="DenseNet121", use_base_weights=True,
-    #               weights_path=None, input_shape=None, for_test=False):
-    #
-    #     if use_base_weights is True:
-    #         base_weights = "imagenet"
-    #     else:
-    #         base_weights = None
-    #
-    #     base_model_class = getattr(
-    #         importlib.import_module(
-    #             f"keras.applications.{self.models_[model_name]['module_name']}"
-    #         ),
-    #         model_name)
-    #
-    #     if input_shape is None:
-    #         input_shape = self.models_[model_name]["input_shape"]
-    #
-    #     img_input = Input(shape=input_shape)
-    #
-    #     base_model = base_model_class(
-    #         include_top=False,
-    #         input_tensor=img_input,
-    #         input_shape=input_shape,
-    #         weights=base_weights,
-    #         pooling="avg")
-    #     x = base_model.output
-    #     predictions = Dense(len(class_names), activation="sigmoid", name="predictions")(x)
-    #     model = Model(inputs=img_input, outputs=predictions)
-    #
-    #     if for_test:
-    #         for layer in model.layers[:-5]:
-    #             layer.trainable = False
-    #
-    #         model.layers.pop()
-    #         model.layers.pop()
-    #
-    #         inputs = Input(shape=input_shape, name="attention_map")
-    #
-    #         x = keras.layers.Conv2D(32, kernel_size=(3, 3))(inputs)
-    #         x = keras.layers.BatchNormalization()(x)
-    #         # x = keras.layers.Activation('relu')(x)
-    #         x = keras.layers.LeakyReLU()(x)
-    #         x = keras.layers.MaxPool2D(pool_size=(3, 3))(x)
-    #
-    #         x = keras.layers.Conv2D(64, kernel_size=(3, 3))(x)
-    #         # x = keras.layers.Activation('relu')(x)
-    #         x = keras.layers.LeakyReLU()(x)
-    #         x = keras.layers.BatchNormalization()(x)
-    #         x = keras.layers.MaxPool2D(pool_size=(3, 3))(x)
-    #
-    #         x = keras.layers.Conv2D(1024, kernel_size=(3, 3))(x)
-    #         # x = keras.layers.Activation('relu')(x)
-    #         x = keras.layers.LeakyReLU()(x)
-    #         x = keras.layers.BatchNormalization()(x)
-    #         x = keras.layers.MaxPool2D(pool_size=(3, 3))(x)
-    #
-    #         x = keras.layers.Add()([model.layers[-1].output, x])
-    #         x = keras.layers.GlobalAveragePooling2D()(x)
-    #         x = keras.layers.Dense(5)(x)  # Num Classes for CIFAR-10
-    #         outputs = keras.layers.Activation('sigmoid')(x)
-    #
-    #         model = keras.models.Model(inputs=[model.input, inputs], outputs=[outputs])
-    #
-    #     if weights_path == "":
-    #         weights_path = None
-    #
-    #     if weights_path is not None:
-    #         print(f"load model weights_path: {weights_path}")
-    #         model.load_weights(weights_path)
-    #     return model

@@ -13,7 +13,7 @@ class AugmentedImageSequence(Sequence):
     For more information of imgaug see: https://github.com/aleju/imgaug
     """
 
-    def __init__(self, dataset_csv_file, class_names, source_image_dir, mask_source_image_dir, batch_size=16,
+    def __init__(self, dataset_csv_file, class_names, source_image_dir, batch_size=16,
                  target_size=(224, 224), augmenter=None, verbose=0, steps=None,
                  shuffle_on_epoch_end=True, random_state=1, status="train"):
         """
@@ -27,7 +27,6 @@ class AugmentedImageSequence(Sequence):
         """
         self.dataset_df = pd.read_csv(dataset_csv_file)
         self.source_image_dir = source_image_dir
-        self.mask_source_image_dir = mask_source_image_dir
         self.batch_size = batch_size
         self.target_size = target_size
         self.augmenter = augmenter
@@ -50,16 +49,11 @@ class AugmentedImageSequence(Sequence):
 
     def __getitem__(self, idx):
         batch_x_path = self.x_path[idx * self.batch_size:(idx + 1) * self.batch_size]
-        batch_x_mask_path = self.x_mask_path[idx * self.batch_size:(idx + 1) * self.batch_size]
         batch_x = np.asarray([self.load_image(x_path) for x_path in batch_x_path])
-        if self.status == "train":
-            batch_x_mask = np.asarray([self.load_mask_image(x_path) for x_path in batch_x_mask_path])
-        else:
-            batch_x_mask = np.asarray([self.load_mask_image("img.png") for x_path in batch_x_mask_path])
         # batch_x = self.transform_batch_images(batch_x), self.transform_batch_images(batch_x_mask)
         # batch_x = batch_x, batch_x_mask
         batch_y = self.y[idx * self.batch_size:(idx + 1) * self.batch_size]
-        return [batch_x, batch_x_mask], batch_y
+        return batch_x, batch_y
 
     def load_image(self, image_file):
         image_path = os.path.join(self.source_image_dir, image_file)
@@ -67,15 +61,6 @@ class AugmentedImageSequence(Sequence):
         image_array = np.asarray(image.convert("RGB"))
         image_array = image_array / 255.
         image_array = resize(image_array, self.target_size)
-        return image_array
-
-    def load_mask_image(self, image_file):
-        image_path = os.path.join(self.mask_source_image_dir, image_file)
-        image = Image.open(image_path)
-        image_array = np.asarray(image.convert("RGB"))
-        # image_array = image_array / 255.
-        image_array = resize(image_array, self.target_size)
-
         return image_array
 
     def transform_batch_images(self, batch_x):
@@ -100,7 +85,7 @@ class AugmentedImageSequence(Sequence):
 
     def prepare_dataset(self):
         df = self.dataset_df.sample(frac=1., random_state=self.random_state)
-        self.x_path, self.x_mask_path, self.y = df["Image Index"].values, df["Mask Image Index"].values, df[self.class_names].values
+        self.x_path, self.y = df["image_id"].values, df[self.class_names].values
 
     def on_epoch_end(self):
         if self.shuffle:

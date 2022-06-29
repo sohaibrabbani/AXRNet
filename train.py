@@ -12,23 +12,21 @@ from models.keras import ModelFactory
 from utility import get_sample_counts
 from weights import get_class_weights
 from mlflow import log_metric, log_param, log_artifacts
-# import mlflow
+import mlflow
 # import mlflow.keras
-
-
-# from augmenter import augmenter
-import keras
-
 
 def main():
     # parser config
-    # mlflow.start_run()
+    mlflow.set_experiment("CheXNet Training Experiments - Training")
+    mlflow.start_run()
+    run_id = mlflow.active_run().info.run_id
     config_file = "./config.ini"
     cp = ConfigParser()
     cp.read(config_file)
 
     # default config
-    output_dir = cp["DEFAULT"].get("output_dir")
+    output_dir_root = cp["DEFAULT"].get("output_dir")
+    output_dir = output_dir_root + run_id
     image_source_dir = cp["DEFAULT"].get("image_source_dir")
     mask_image_source_dir = cp["DEFAULT"].get("mask_image_source_dir")
     base_model_name = cp["DEFAULT"].get("base_model_name")
@@ -53,12 +51,12 @@ def main():
     datasets = {"train": "train_73.csv", "val": "val_13.csv", "test": "test.csv"}
     # if previously trained weights is used, never re-split
 
-    # mlflow.log_param("epochs", epochs)
-    # mlflow.log_param("datasets", datasets)
-    # mlflow.log_param("batch_size", batch_size)
-    # mlflow.log_param("min_lr", min_lr)
-    # mlflow.log_param("patience_reduce_lr", patience_reduce_lr)
-    # mlflow.log_param("learning_rate", initial_learning_rate)
+    mlflow.log_param("epochs", epochs)
+    mlflow.log_param("datasets", datasets)
+    mlflow.log_param("batch_size", batch_size)
+    mlflow.log_param("min_lr", min_lr)
+    mlflow.log_param("patience_reduce_lr", patience_reduce_lr)
+    mlflow.log_param("learning_rate", initial_learning_rate)
 
     if use_trained_model_weights:
         # resuming mode
@@ -141,7 +139,7 @@ def main():
             else:
                 model_weights_file = os.path.join(output_dir, output_weights_name)
         else:
-            model_weights_file = os.path.join(output_dir, f"original_{output_weights_name}")
+            model_weights_file = os.path.join(output_dir_root, f"original_{output_weights_name}")
 
         model_factory = ModelFactory()
         model = model_factory.get_model(
@@ -162,7 +160,6 @@ def main():
             dataset_csv_file=os.path.join(output_dir, datasets["train"]),
             class_names=class_names,
             source_image_dir=image_source_dir,
-            mask_source_image_dir=mask_image_source_dir,
             batch_size=batch_size,
             target_size=(image_dimension, image_dimension),
             # augmenter=augmenter,
@@ -173,7 +170,6 @@ def main():
             dataset_csv_file=os.path.join(output_dir, datasets["val"]),
             class_names=class_names,
             source_image_dir=image_source_dir,
-            mask_source_image_dir=mask_image_source_dir,
             batch_size=batch_size,
             target_size=(image_dimension, image_dimension),
             # augmenter=augmenter,
@@ -237,9 +233,13 @@ def main():
             workers=generator_workers,
             shuffle=False,
         )
-        # mlflow.log_metric("best_mean_auroc", auroc.stats["best_mean_auroc"])
-        # mlflow.log_metric("best_auroc_logs", auroc.best_auroc_log_path)
-        # mlflow.log_artifact("model_weights", auroc.best_weights_path)
+
+        mlflow.log_metric("best_mean_auroc", auroc.stats["best_mean_auroc"])
+        mlflow.log_param("best_auroc_logs", auroc.best_auroc_log_path)
+        mlflow.log_artifact(auroc.best_weights_path, "model_weights")
+        mlflow.log_artifact("./train.py")
+        mlflow.log_artifact("./models/keras.py")
+
         # dump history
         print("** dump history **")
         with open(os.path.join(output_dir, "history.pkl"), "wb") as f:

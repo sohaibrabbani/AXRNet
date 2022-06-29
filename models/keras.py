@@ -3,7 +3,7 @@ import keras
 from keras.layers import Input
 from keras.layers.core import Dense
 from keras.models import Model
-
+import mlflow
 
 class ModelFactory:
     """
@@ -90,6 +90,8 @@ class ModelFactory:
         predictions = Dense(14, activation="sigmoid", name="predictions")(x)
         model = Model(inputs=img_input, outputs=predictions)
 
+        unfreeze_layers = 5
+
         if not for_test:
             if weights_path == "":
                 weights_path = None
@@ -97,10 +99,11 @@ class ModelFactory:
             if weights_path is not None:
                 print(f"load model weights_path: {weights_path}")
                 model.load_weights(weights_path)
+            mlflow.log_param("unfreeze_layers", unfreeze_layers)
 
         print(model.summary())
         # if for_test:
-        for layer in model.layers[:-7]:
+        for layer in model.layers[:-unfreeze_layers]:
             layer.trainable = False
 
         model.layers.pop()

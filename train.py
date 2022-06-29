@@ -5,15 +5,15 @@ import pickle
 from callback import MultipleClassAUROC, MultiGPUModelCheckpoint
 from configparser import ConfigParser
 from generator import AugmentedImageSequence
-from keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau
+from keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau, EarlyStopping
 from keras.optimizers import Adam
 from keras.utils import multi_gpu_model
 from models.keras import ModelFactory
 from utility import get_sample_counts
 from weights import get_class_weights
 from mlflow import log_metric, log_param, log_artifacts
-# import mlflow
-# import mlflow.keras
+import mlflow
+import mlflow.keras
 
 
 # from augmenter import augmenter
@@ -22,13 +22,17 @@ import keras
 
 def main():
     # parser config
-    # mlflow.start_run()
+    # experiment_id = mlflow.create_experiment("AXRNet Experiments")
+    # experiment = mlflow.get_experiment_by_name("AXRNet Experiments")
+    mlflow.start_run()
+    run_id = mlflow.active_run().info.run_id
     config_file = "./config.ini"
     cp = ConfigParser()
     cp.read(config_file)
 
     # default config
-    output_dir = cp["DEFAULT"].get("output_dir")
+    output_dir_root = cp["DEFAULT"].get("output_dir")
+    output_dir = output_dir_root + run_id
     image_source_dir = cp["DEFAULT"].get("image_source_dir")
     mask_image_source_dir = cp["DEFAULT"].get("mask_image_source_dir")
     base_model_name = cp["DEFAULT"].get("base_model_name")
@@ -53,12 +57,12 @@ def main():
     datasets = {"train": "train_73.csv", "val": "val_13.csv", "test": "test.csv"}
     # if previously trained weights is used, never re-split
 
-    # mlflow.log_param("epochs", epochs)
-    # mlflow.log_param("datasets", datasets)
-    # mlflow.log_param("batch_size", batch_size)
-    # mlflow.log_param("min_lr", min_lr)
-    # mlflow.log_param("patience_reduce_lr", patience_reduce_lr)
-    # mlflow.log_param("learning_rate", initial_learning_rate)
+    mlflow.log_param("epochs", epochs)
+    mlflow.log_param("datasets", datasets)
+    mlflow.log_param("batch_size", batch_size)
+    mlflow.log_param("min_lr", min_lr)
+    mlflow.log_param("patience_reduce_lr", patience_reduce_lr)
+    mlflow.log_param("learning_rate", initial_learning_rate)
 
     if use_trained_model_weights:
         # resuming mode
@@ -141,7 +145,7 @@ def main():
             else:
                 model_weights_file = os.path.join(output_dir, output_weights_name)
         else:
-            model_weights_file = os.path.join(output_dir, f"original_{output_weights_name}")
+            model_weights_file = os.path.join(output_dir_root, f"original_{output_weights_name}")
 
         model_factory = ModelFactory()
         model = model_factory.get_model(
@@ -221,6 +225,7 @@ def main():
             TensorBoard(log_dir=os.path.join(output_dir, "logs"), batch_size=batch_size),
             ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=patience_reduce_lr,
                               verbose=1, mode="min", min_lr=min_lr),
+            # EarlyStopping(monitor="val_loss", patience=5),
             auroc,
             # train_auroc
         ]
@@ -237,9 +242,13 @@ def main():
             workers=generator_workers,
             shuffle=False,
         )
-        # mlflow.log_metric("best_mean_auroc", auroc.stats["best_mean_auroc"])
-        # mlflow.log_metric("best_auroc_logs", auroc.best_auroc_log_path)
-        # mlflow.log_artifact("model_weights", auroc.best_weights_path)
+
+        mlflow.log_metric("best_mean_auroc", auroc.stats["best_mean_auroc"])
+        mlflow.log_param("best_auroc_logs", auroc.best_auroc_log_path)
+        mlflow.log_artifact(auroc.best_weights_path, "model_weights")
+        mlflow.log_artifact("./train.py")
+        mlflow.log_artifact("./models/keras.py")
+
         # dump history
         print("** dump history **")
         with open(os.path.join(output_dir, "history.pkl"), "wb") as f:
@@ -248,7 +257,7 @@ def main():
                 "auroc": auroc.aurocs,
             }, f)
         print("** done! **")
-        # mlflow.end_run()
+        mlflow.end_run()
     finally:
         os.remove(running_flag_file)
 

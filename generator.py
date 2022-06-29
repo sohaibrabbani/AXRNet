@@ -100,7 +100,7 @@ class AugmentedImageSequence(Sequence):
 
     def prepare_dataset(self):
         df = self.dataset_df.sample(frac=1., random_state=self.random_state)
-        self.x_path, self.x_mask_path, self.y = df["Image Index"].values, df["Mask Image Index"].values, df[self.class_names].values
+        self.x_path, self.x_mask_path, self.y = df["image_id"].values, df["mask_image_id"].values, df[self.class_names].values
 
     def on_epoch_end(self):
         if self.shuffle:

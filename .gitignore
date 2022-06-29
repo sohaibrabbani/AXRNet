@@ -2,3 +2,6 @@
 /.idea/
 /experiments/
 /a.png
+/models/
+/mlruns/
+/__pycache__/

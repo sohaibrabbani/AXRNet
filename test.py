@@ -5,16 +5,17 @@ from generator import AugmentedImageSequence
 from models.keras import ModelFactory
 from sklearn.metrics import roc_auc_score
 from utility import get_sample_counts
-
+import mlflow
 
 def main():
     # parser config
     config_file = "./config.ini"
     cp = ConfigParser()
     cp.read(config_file)
-
+    run_id = mlflow.list_run_infos("0")[0].run_id
     # default config
-    output_dir = cp["DEFAULT"].get("output_dir")
+    output_dir_root = cp["DEFAULT"].get("output_dir")
+    output_dir = output_dir_root + run_id
     base_model_name = cp["DEFAULT"].get("base_model_name")
     class_names = cp["DEFAULT"].get("class_names").split(",")
     # class_names = [x.lower() for x in class_names]

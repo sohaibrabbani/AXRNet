@@ -9,7 +9,7 @@ from PIL import Image
 from generator import AugmentedImageSequence
 from models.keras import ModelFactory
 from keras import backend as kb
-
+import mlflow
 
 def get_output_layer(model, layer_name):
     # get the symbolic outputs of each "key" layer (we gave them unique names).
@@ -51,11 +51,11 @@ def create_cam(df_g, output_dir, image_source_dir, model, generator, class_names
     :param generator: generator.AugmentedImageSequence
     :param class_names: list of str
     """
-    file_name = df_g["file_name"]
+    file_name = df_g["file_name"] + ".png"
     print(f"process image: {file_name}")
 
     # draw bbox with labels
-    img_ori = cv2.imread(filename=os.path.join(image_source_dir, file_name))
+    img_ori = cv2.imread(filename=os.path.join(image_source_dir + "_unchanged", file_name))
 
     label = df_g["label"]
     if label == "Infiltrate":
@@ -75,7 +75,7 @@ def create_cam(df_g, output_dir, image_source_dir, model, generator, class_names
     # CAM overlay
     # Get the 512 input weights to the softmax.
     cam = grad_cam(model, [np.array([img_transformed]), np.array([img_mask_transformed])], index, "add_1",
-                   img_ori.shape[:2])
+                   (224, 224))
 
     # class_weights = model.layers[-1].get_weights()[0]
     # print(model.summary())
@@ -97,8 +97,8 @@ def create_cam(df_g, output_dir, image_source_dir, model, generator, class_names
     # gt_annotation = np.zeros_like(gt_annotation_temp)
 
     heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
-    heatmap[np.where(cam < 0.3)] = 0
-    heatmap[700:, :300] = 0
+    heatmap[np.where(cam < 0.5)] = 0
+    # heatmap[700:, :300] = 0
     mask_img = cv2.cvtColor(heatmap, cv2.COLOR_BGR2GRAY)
 
     # Green Color is for Ground Truth Annotations
@@ -115,19 +115,20 @@ def create_cam(df_g, output_dir, image_source_dir, model, generator, class_names
     # cv2.imwrite(output_path_mask, overlapping_image)
     cv2.imwrite(output_path_mask, np.where(mask_img > 0, 255, 0))
     # cv2.imwrite(output_path_mask, heatmap)
-    img = heatmap * 0.5 + img_ori
-
+    img = img_ori
     # add label & rectangle
     # ratio = output dimension / 1024
 
     ratio = 1
-    x1 = int(df_g["x"] * ratio)
-    y1 = int(df_g["y"] * ratio)
-    x2 = int((df_g["x"] + df_g["w"]) * ratio)
-    y2 = int((df_g["y"] + df_g["h"]) * ratio)
+    x1 = int(df_g["x_min"] * ratio)
+    y1 = int(df_g["y_min"] * ratio)
+    x2 = int((df_g["x_max"]) * ratio)
+    y2 = int((df_g["y_max"]) * ratio)
     cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 15)
     cv2.putText(img, text=label, org=(5, 20), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=0.8, color=(0, 0, 255), thickness=1)
+    img = cv2.resize(img, (224, 224), interpolation=cv2.INTER_NEAREST)
+    img = heatmap * 0.5 + img
     cv2.imwrite(output_path, img)
 
 
@@ -136,9 +137,12 @@ def main():
     config_file = "./config.ini"
     cp = ConfigParser()
     cp.read(config_file)
-
+    # mlflow.set_experiment("AXRNet Experiments - Localization")
+    # mlflow.start_run()
+    run_id = mlflow.list_run_infos("0")[0].run_id
     # default config
-    output_dir = cp["DEFAULT"].get("output_dir")
+    output_dir_root = cp["DEFAULT"].get("output_dir")
+    output_dir = output_dir_root + run_id
     base_model_name = cp["DEFAULT"].get("base_model_name")
     class_names = cp["DEFAULT"].get("class_names").split(",")
     image_source_dir = cp["DEFAULT"].get("image_source_dir")
@@ -171,7 +175,8 @@ def main():
 
     print("read bbox list file")
     df_images = pd.read_csv(bbox_list_file, header=None, skiprows=1)
-    df_images.columns = ["file_name", "label", "x", "y", "w", "h"]
+    df_images = df_images.iloc[:, 1:]
+    df_images.columns = ["file_name", "label", "x_min", "y_min", "x_max", "y_max"]
 
     print("create a generator for loading transformed images")
     cam_sequence = AugmentedImageSequence(
@@ -184,6 +189,7 @@ def main():
         augmenter=None,
         steps=1,
         shuffle_on_epoch_end=False,
+        status="test"
     )
 
     image_output_dir = os.path.join(output_dir, "cam")
@@ -203,6 +209,7 @@ def main():
         axis=1,
     )
 
+    # mlflow.end_run()
 
 if __name__ == "__main__":
     # utils.filter_test_data_from_dataset()

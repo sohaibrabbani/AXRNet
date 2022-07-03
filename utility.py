@@ -48,6 +48,22 @@ def dicom_to_pngs(data_type):
                     mask)
 
 
+def dicom_to_pngs_unchanged(data_type):
+    annotations_path = f"./data/vindr-cxr/annotations/annotations_{data_type}_5.csv"
+    image_root_path = f"./data/vindr-cxr/{data_type}/"
+    files = pd.read_csv(annotations_path)
+    filtered_image_ids = files["image_id"].unique().tolist()
+    for image_id in filtered_image_ids:
+        image_name = image_id + ".dicom"
+        ds = dcm.dcmread(os.path.join(image_root_path, image_name))
+        img = ds.pixel_array
+        if ds.get("PhotometricInterpretation") == "MONOCHROME1":
+            img = np.amax(img) - img
+        img = img - np.min(img)
+        img = ((np.maximum(img, 0) / img.max()) * 255).astype(np.uint8)
+        cv2.imwrite(os.path.join(f"./data/vindr-cxr/images_unchanged", image_name.replace(".dicom", ".png")), img)
+
+
 def preprocess_classification_records(data_type):
     df = pd.read_csv(f"./data/vindr-cxr/annotations/image_labels_{data_type}.csv")
     # Filtered 5 diseases for our use
@@ -115,5 +131,6 @@ data_type = {"train": "train", "test": "test"}
 # preprocess_classification_records(data_type["test"])
 # preprocess_annotation_records(data_type["test"])
 # dicom_to_pngs(data_type["test"])
+dicom_to_pngs_unchanged(data_type["test"])
 # make_csv_for_model(data_type["test"])
 # train_test_split()

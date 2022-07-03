@@ -12,6 +12,8 @@ def main():
     config_file = "./config.ini"
     cp = ConfigParser()
     cp.read(config_file)
+    mlflow.set_experiment("AXRNet Experiments - Testing")
+    mlflow.start_run()
     run_id = mlflow.list_run_infos("0")[0].run_id
     # default config
     output_dir_root = cp["DEFAULT"].get("output_dir")
@@ -94,11 +96,17 @@ def main():
                 aurocs.append(score)
             except ValueError:
                 score = 0
-            f.write(f"{class_names[i]}: {score}\n")
-        mean_auroc = np.mean(aurocs)
-        f.write("-------------------------\n")
-        f.write(f"mean auroc: {mean_auroc}\n")
-        print(f"mean auroc: {mean_auroc}")
+                f.write(f"{class_names[i]}: {score}\n")
+                mlflow.log_metric(class_names[i], score)
+            mean_auroc = np.mean(aurocs)
+            mlflow.log_metric("best_mean_auroc", mean_auroc)
+            f.write("-------------------------\n")
+            f.write(f"mean auroc: {mean_auroc}\n")
+            print(f"mean auroc: {mean_auroc}")
+        mlflow.log_param("training_run_id", mlflow.list_run_infos("0")[0].run_id)
+        mlflow.log_artifact(test_log_path)
+        mlflow.log_artifact("./test.py")
+        mlflow.end_run()
 
 
 if __name__ == "__main__":

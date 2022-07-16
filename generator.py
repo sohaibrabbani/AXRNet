@@ -63,6 +63,15 @@ class AugmentedImageSequence(Sequence):
         image_array = resize(image_array, self.target_size)
         return image_array
 
+    def load_mask_image(self, image_file):
+        image_path = os.path.join(self.source_image_dir, image_file)
+        image = Image.open(image_path)
+        image_array = np.asarray(image.convert("RGB"))
+        # image_array = image_array / 255.
+        image_array = resize(image_array, self.target_size)
+
+        return image_array
+
     def transform_batch_images(self, batch_x):
         if self.augmenter is not None:
             batch_x = self.augmenter.augment_images(batch_x)

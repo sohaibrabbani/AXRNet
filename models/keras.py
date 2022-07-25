@@ -90,7 +90,7 @@ class ModelFactory:
         predictions = Dense(14, activation="sigmoid", name="predictions")(x)
         model = Model(inputs=img_input, outputs=predictions)
 
-        unfreeze_layers = 5
+        unfreeze_layers = 3
 
         if not for_test:
             if weights_path == "":

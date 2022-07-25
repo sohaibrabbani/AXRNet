@@ -6,6 +6,7 @@ from models.keras import ModelFactory
 from sklearn.metrics import roc_auc_score
 from utility import get_sample_counts
 import mlflow
+import shutil
 
 def main():
     # parser config
@@ -96,17 +97,17 @@ def main():
                 aurocs.append(score)
             except ValueError:
                 score = 0
-                f.write(f"{class_names[i]}: {score}\n")
-                mlflow.log_metric(class_names[i], score)
-            mean_auroc = np.mean(aurocs)
-            mlflow.log_metric("best_mean_auroc", mean_auroc)
-            f.write("-------------------------\n")
-            f.write(f"mean auroc: {mean_auroc}\n")
-            print(f"mean auroc: {mean_auroc}")
-        mlflow.log_param("training_run_id", mlflow.list_run_infos("0")[0].run_id)
-        mlflow.log_artifact(test_log_path)
-        mlflow.log_artifact("./test.py")
-        mlflow.end_run()
+            f.write(f"{class_names[i]}: {score}\n")
+            mlflow.log_metric(class_names[i], score)
+        mean_auroc = np.mean(aurocs)
+        mlflow.log_metric("best_mean_auroc", mean_auroc)
+        f.write("-------------------------\n")
+        f.write(f"mean auroc: {mean_auroc}\n")
+        print(f"mean auroc: {mean_auroc}")
+    mlflow.log_param("training_run_id", mlflow.list_run_infos("0")[0].run_id)
+    mlflow.log_artifact(test_log_path)
+    mlflow.log_artifact("./test.py")
+    mlflow.end_run()
 
 
 if __name__ == "__main__":

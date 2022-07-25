@@ -7,8 +7,9 @@ import os
 import cv2
 import numpy as np
 import glob
+import mlflow
 
-class_names = ["infiltration", "nodule", "consolidation", "fibrosis", "pleural_thickening"]
+# class_names = ["infiltration", "nodule", "consolidation", "fibrosis", "pleural_thickening"]
 
 
 def iou_coef(y_true, y_pred, smooth=1):
@@ -28,10 +29,16 @@ def dice_coef(y_true, y_pred, smooth=1):
 config_file = "./config.ini"
 cp = ConfigParser()
 cp.read(config_file)
+class_names = cp["DEFAULT"].get("class_names").split(",")
+
 # CAM config
-output_dir = cp["DEFAULT"].get("output_dir")
+run_id = mlflow.list_run_infos("0")[0].run_id
+# default config
+output_dir_root = cp["DEFAULT"].get("output_dir")
+output_dir = output_dir_root + run_id
+
 for class_name in class_names:
-    path_gt = f"data/gt_data_for_localization/{class_name}"
+    path_gt = f"data/vindr-cxr/data_for_iou/{class_name}"
     # path_gc = f"experiments_our_model/20/cam/{class_name}"
     path_gc = f"{output_dir}/cam/{class_name}"
     # folder_path = f"data_for_iou\\{class_name}\\"

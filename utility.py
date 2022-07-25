@@ -3,7 +3,7 @@ import pydicom as dcm
 import numpy as np
 import os
 import pandas as pd
-
+from collections import Counter
 
 
 def get_sample_counts(output_dir, dataset, class_names):
@@ -127,10 +127,75 @@ def train_test_split():
     print("")
 
 
+def make_ground_truth_masks_old(data_type):
+    images = pd.read_csv(f"./data/vindr-cxr/annotations/annotations_{data_type}_5.csv")
+    images = images.sort_values(by=["image_id"])
+    image_source_dir = "./data/vindr-cxr/images_unchanged"
+    image_output_dir = "./data/vindr-cxr/gt_masks"
+    class_names = ["Consolidation", "Nodule/Mass", "Pleural thickening", "Infiltration", "Pulmonary fibrosis"]
+    if not os.path.isdir(image_output_dir):
+        os.makedirs(image_output_dir)
+
+    counter = Counter(images["image_id"])
+    count = 0
+    for class_name in class_names:
+        df = images.loc[images["class_name"] == class_name]
+    for index, image in images.iterrows():
+        image_name = image["image_id"] + ".png"
+        if not count:
+            count = counter[image["image_id"]]
+            img = cv2.imread(os.path.join(image_source_dir, image_name))
+            mask = np.zeros_like(img)
+        x1 = int(image["x_min"])
+        y1 = int(image["y_min"])
+        x2 = int(image["x_max"])
+        y2 = int(image["y_max"])
+        mask = cv2.rectangle(mask, (x1, y1), (x2, y2), (255, 255, 255), cv2.FILLED)
+        if count == 1:
+            mask = cv2.resize(mask, (224, 224), interpolation=cv2.INTER_NEAREST)
+            cv2.imwrite(os.path.join(image_output_dir, image_name), mask)
+        count -= 1
+
+def make_ground_truth_masks(data_type):
+    images = pd.read_csv(f"./data/vindr-cxr/annotations/annotations_{data_type}_5.csv")
+    image_source_dir = "./data/vindr-cxr/images_unchanged"
+    image_output_dir = "./data/vindr-cxr/"
+    class_names = ["Consolidation", "Nodule-Mass", "Pleural thickening", "Infiltration", "Pulmonary fibrosis"]
+    # images = images.rename(columns={'Nodule/Mass': 'Nodule-Mass'}, inplace=True)
+    images = images.replace(to_replace="Nodule/Mass", value="Nodule-Mass")
+    # if not os.path.isdir(image_output_dir):
+    #     os.makedirs(image_output_dir)
+
+
+    count = 0
+    for class_name in class_names:
+        df = images.loc[images["class_name"] == class_name]
+        df = df.sort_values(by=["image_id"])
+        counter = Counter(df["image_id"])
+        for index, image in df.iterrows():
+            image_name = image["image_id"] + ".png"
+            folder_path = image_output_dir + f"data_for_iou/{class_name}"
+            file_path = image_output_dir + f"data_for_iou/{class_name}/{image_name}"
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+            if not count:
+                count = counter[image["image_id"]]
+                mask = np.zeros_like(cv2.imread(os.path.join(image_source_dir, image_name)))
+            x1 = int(image["x_min"])
+            y1 = int(image["y_min"])
+            x2 = int(image["x_max"])
+            y2 = int(image["y_max"])
+            mask = cv2.rectangle(mask, (x1, y1), (x2, y2), (255, 255, 255), cv2.FILLED)
+            if count == 1:
+                mask = cv2.resize(mask, (224, 224), interpolation=cv2.INTER_NEAREST)
+                cv2.imwrite(file_path, mask)
+            count -= 1
+
+
 data_type = {"train": "train", "test": "test"}
 # preprocess_classification_records(data_type["test"])
 # preprocess_annotation_records(data_type["test"])
 # dicom_to_pngs(data_type["test"])
-dicom_to_pngs_unchanged(data_type["test"])
+# dicom_to_pngs_unchanged(data_type["test"])
 # make_csv_for_model(data_type["test"])
 # train_test_split()

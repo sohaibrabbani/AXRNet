@@ -2,6 +2,10 @@ import json
 import shutil
 import os
 import pickle
+
+import pandas as pd
+
+import utility
 from callback import MultipleClassAUROC, MultiGPUModelCheckpoint
 from configparser import ConfigParser
 from generator import AugmentedImageSequence
@@ -14,7 +18,7 @@ from weights import get_class_weights
 from mlflow import log_metric, log_param, log_artifacts
 import mlflow
 import mlflow.keras
-
+import numpy as np
 
 # from augmenter import augmenter
 import keras
@@ -155,7 +159,7 @@ def main():
             weights_path=model_weights_file,
             input_shape=(image_dimension, image_dimension, 3),
             for_test=False
-            )
+        )
 
         print(model.summary())
         if show_model_summary:
@@ -207,10 +211,12 @@ def main():
                 save_best_only=False,
                 verbose=1,
             )
-
+        train_df = pd.read_csv(os.path.join(output_dir, datasets["train"]))
+        train_labels = np.array([row[3:].tolist() for _, row in train_df.iterrows()])
+        neg_weights, pos_weights = utility.compute_class_freqs(train_labels)
         print("** compile model with class weights **")
         optimizer = Adam(lr=initial_learning_rate)
-        model_train.compile(optimizer=optimizer, loss="binary_crossentropy")
+        model_train.compile(optimizer=optimizer, loss=utility.get_weighted_loss(pos_weights,neg_weights))
 
         auroc = MultipleClassAUROC(
             sequence=validation_sequence,
@@ -238,7 +244,7 @@ def main():
             validation_data=validation_sequence,
             validation_steps=validation_steps,
             callbacks=callbacks,
-            class_weight=class_weights,
+            # class_weight=class_weights,
             workers=generator_workers,
             shuffle=False,
         )

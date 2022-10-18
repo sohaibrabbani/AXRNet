@@ -90,7 +90,7 @@ class ModelFactory:
         predictions = Dense(14, activation="sigmoid", name="predictions")(x)
         model = Model(inputs=img_input, outputs=predictions)
 
-        unfreeze_layers = 3
+        unfreeze_layers = 5
 
         if not for_test:
             if weights_path == "":
@@ -142,6 +142,11 @@ class ModelFactory:
         x = keras.layers.Dense(1024)(x)
         # x = keras.layers.Activation('relu')(x)
         x = keras.layers.LeakyReLU()(x)
+        x = keras.layers.Dropout(0.4)(x)
+        x = keras.layers.Dense(512)(x)
+        # x = keras.layers.Activation('relu')(x)
+        x = keras.layers.LeakyReLU()(x)
+        x = keras.layers.Dropout(0.4)(x)
         # x = keras.layers.Dense(1024, activation='sigmoid')(x)  # Num Classes for CIFAR-10
         outputs = keras.layers.Dense(len(class_names), activation='sigmoid')(x)  # Num Classes for CIFAR-10
         # outputs = keras.layers.Activation('sigmoid')(x)

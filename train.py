@@ -28,6 +28,7 @@ def main():
     # parser config
     # experiment_id = mlflow.create_experiment("AXRNet Experiments")
     # experiment = mlflow.get_experiment_by_name("AXRNet Experiments")
+    mlflow.set_experiment("AXR Experiments - Training")
     mlflow.start_run()
     run_id = mlflow.active_run().info.run_id
     config_file = "./config.ini"
@@ -216,7 +217,8 @@ def main():
         neg_weights, pos_weights = utility.compute_class_freqs(train_labels)
         print("** compile model with class weights **")
         optimizer = Adam(lr=initial_learning_rate)
-        model_train.compile(optimizer=optimizer, loss=utility.get_weighted_loss(pos_weights,neg_weights))
+        model_train.compile(optimizer=optimizer, loss=utility.get_weighted_loss(pos_weights, neg_weights))
+        # model_train.compile(optimizer=optimizer, loss='binary_crossentropy')
 
         auroc = MultipleClassAUROC(
             sequence=validation_sequence,

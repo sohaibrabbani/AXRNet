@@ -40,7 +40,7 @@ class MultipleClassAUROC(Callback):
         self.aurocs = {}
         for c in self.class_names:
             self.aurocs[c] = []
-
+        self.mean_auroc = 0
     def on_epoch_end(self, epoch, logs={}):
         """
         Calculate the average AUROC and save the best model weights according
@@ -71,10 +71,10 @@ class MultipleClassAUROC(Callback):
         print("*********************************")
 
         # customize your multiple class metrics here
-        mean_auroc = np.mean(current_auroc)
-        print(f"mean auroc: {mean_auroc}")
-        if mean_auroc > self.stats["best_mean_auroc"]:
-            print(f"update best auroc from {self.stats['best_mean_auroc']} to {mean_auroc}")
+        self.mean_auroc = np.mean(current_auroc)
+        print(f"mean auroc: {self.mean_auroc}")
+        if self.mean_auroc > self.stats["best_mean_auroc"]:
+            print(f"update best auroc from {self.stats['best_mean_auroc']} to {self.mean_auroc}")
 
             # 1. copy best model
             shutil.copy(self.weights_path, self.best_weights_path)
@@ -82,14 +82,14 @@ class MultipleClassAUROC(Callback):
             # 2. update log file
             print(f"update log file: {self.best_auroc_log_path}")
             with open(self.best_auroc_log_path, "a") as f:
-                f.write(f"(epoch#{epoch + 1}) auroc: {mean_auroc}, lr: {self.stats['lr']}\n")
+                f.write(f"(epoch#{epoch + 1}) auroc: {self.mean_auroc}, lr: {self.stats['lr']}\n")
 
             # 3. write stats output, this is used for resuming the training
             with open(self.stats_output_path, 'w') as f:
                 json.dump(self.stats, f)
 
             print(f"update model file: {self.weights_path} -> {self.best_weights_path}")
-            self.stats["best_mean_auroc"] = mean_auroc
+            self.stats["best_mean_auroc"] = self.mean_auroc
             print("*********************************")
         return
 

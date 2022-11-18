@@ -20,7 +20,7 @@ import mlflow
 import mlflow.keras
 import numpy as np
 
-# from augmenter import augmenter
+from augmenter import augmenter
 import keras
 
 
@@ -55,6 +55,7 @@ def main():
     image_dimension = cp["TRAIN"].getint("image_dimension")
     train_steps = cp["TRAIN"].get("train_steps")
     patience_reduce_lr = cp["TRAIN"].getint("patience_reduce_lr")
+    patience_early_stopping = cp["TRAIN"].getint("patience_early_stopping")
     min_lr = cp["TRAIN"].getfloat("min_lr")
     validation_steps = cp["TRAIN"].get("validation_steps")
     positive_weights_multiply = cp["TRAIN"].getfloat("positive_weights_multiply")
@@ -174,7 +175,7 @@ def main():
             mask_source_image_dir=mask_image_source_dir,
             batch_size=batch_size,
             target_size=(image_dimension, image_dimension),
-            # augmenter=augmenter,
+            augmenter=augmenter,
             steps=train_steps,
             status="train"
         )
@@ -185,7 +186,7 @@ def main():
             mask_source_image_dir=mask_image_source_dir,
             batch_size=batch_size,
             target_size=(image_dimension, image_dimension),
-            # augmenter=augmenter,
+            augmenter=augmenter,
             steps=validation_steps,
             shuffle_on_epoch_end=False,
             status="val"
@@ -217,6 +218,14 @@ def main():
         neg_weights, pos_weights = utility.compute_class_freqs(train_labels)
         print("** compile model with class weights **")
         optimizer = Adam(lr=initial_learning_rate)
+
+        # step = tf.Variable(0, trainable=False)
+        # schedule = tf.optimizers.schedules.PiecewiseConstantDecay(
+        #     [10000, 15000], [1e-0, 1e-1, 1e-2])
+        # # lr and wd can be a function or a tensor
+        # lr = 1e-1 * schedule(step)
+        # wd = lambda: 1e-4 * schedule(step)
+        # optimizer = AdamW(learning_rate=initial_learning_rate)
         model_train.compile(optimizer=optimizer, loss=utility.get_weighted_loss(pos_weights, neg_weights))
         # model_train.compile(optimizer=optimizer, loss='binary_crossentropy')
 
@@ -230,11 +239,11 @@ def main():
 
         callbacks = [
             checkpoint,
+            auroc,
             TensorBoard(log_dir=os.path.join(output_dir, "logs"), batch_size=batch_size),
             ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=patience_reduce_lr,
                               verbose=1, mode="min", min_lr=min_lr),
-            # EarlyStopping(monitor="val_loss", patience=5),
-            auroc,
+            EarlyStopping(monitor="val_loss", mode='min', patience=patience_early_stopping),
             # train_auroc
         ]
 

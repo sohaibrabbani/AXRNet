@@ -6,6 +6,7 @@ from PIL import Image
 from skimage.transform import resize
 import cv2
 
+
 class AugmentedImageSequence(Sequence):
     """
     Thread-safe image generator with imgaug support
@@ -56,7 +57,7 @@ class AugmentedImageSequence(Sequence):
             batch_x_mask = np.asarray([self.load_mask_image(x_path) for x_path in batch_x_mask_path])
         else:
             batch_x_mask = np.asarray([self.load_mask_image("img.png") for x_path in batch_x_mask_path])
-        # batch_x = self.transform_batch_images(batch_x), self.transform_batch_images(batch_x_mask)
+        batch_x = self.transform_batch_images(batch_x)
         # batch_x = batch_x, batch_x_mask
         batch_y = self.y[idx * self.batch_size:(idx + 1) * self.batch_size]
         return [batch_x, batch_x_mask], batch_y
@@ -96,11 +97,12 @@ class AugmentedImageSequence(Sequence):
             raise ValueError("""
             You're trying run get_y_true() when generator option 'shuffle_on_epoch_end' is True.
             """)
-        return self.y[:self.steps*self.batch_size, :]
+        return self.y[:self.steps * self.batch_size, :]
 
     def prepare_dataset(self):
         df = self.dataset_df.sample(frac=1., random_state=self.random_state)
-        self.x_path, self.x_mask_path, self.y = df["image_id"].values, df["mask_image_id"].values, df[self.class_names].values
+        self.x_path, self.x_mask_path, self.y = df["image_id"].values, df["mask_image_id"].values, df[
+            self.class_names].values
 
     def on_epoch_end(self):
         if self.shuffle:

@@ -8,6 +8,7 @@ from utility import get_sample_counts
 import mlflow
 import shutil
 
+
 def main():
     # parser config
     config_file = "./config.ini"
@@ -15,7 +16,8 @@ def main():
     cp.read(config_file)
     mlflow.set_experiment("AXRNet Experiments - Testing")
     mlflow.start_run()
-    run_id = mlflow.list_run_infos("0")[0].run_id
+    # run_id = mlflow.list_run_infos("0")[0].run_id
+    run_id = '01b8343e729f44ae928bb58cff2e87d5'
     # default config
     output_dir_root = cp["DEFAULT"].get("output_dir")
     output_dir = output_dir_root + run_id
